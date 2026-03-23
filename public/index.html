@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Telegram</title>
+    <script>
+        if (localStorage.getItem('bot_access') !== 'true') {
+            window.location.replace("/login.html"); 
+        }
+    </script>   
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+       
+    </style>
+</head>
+<body class="bg-gradient-to-t from-blue-900 via-slate-900 to-slate-950 flex justify-center items-center min-h-screen m-0 font-sans text-white">
+    <div class="absolute top-6 left-6 flex items-center gap-4 px-5 py-3 bg-slate-800/40 backdrop-blur-md rounded-full border border-white/5 shadow-lg shadow-black/20 z-40">
+        
+        <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-500/50 shadow-inner bg-slate-700">
+            <img src="/perfil.jpg" alt="Foto de Perfil" class="w-full h-full object-cover">
+        </div>
+        <div class="flex flex-col text-left">
+            <h3 class="text-slate-100 font-bold text-sm tracking-tight">Luiz Henrique</h3>
+            <p class="text-slate-500 text-xs font-mono uppercase tracking-widest">Admin Master</p>
+        </div>
+    </div>
+    <button onclick="sairDoPainel()" class="absolute top-6 right-6 flex items-center gap-2 px-5 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-all backdrop-blur-md font-bold text-xs tracking-widest uppercase shadow-lg shadow-red-900/20">
+        Encerrar Sessão
+    </button>
+    <div class="bg-slate-800/15 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-2xl border border-white/10 w-full max-w-sm text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">Bot Telegram 🤖</h2>
+        <p class="text-slate-500 font-semibold mb-2">DIGITE ALGO LEGAL!</p>
+       <input type="text" id="msgInput" placeholder="O que deseja enviar?" onkeypress="checkEnter(event)" class="w-full p-4 my-4 bg-slate-900 text-white border-2 border-slate-700 rounded-xl outline-none focus:border-blue-500 transition-all placeholder-slate-500">
+        <button id="btnEnviar" onclick="enviarMensagem()" class="w-full p-4 bg-sky-600 text-white rounded-xl font-bold hover:bg-sky-700 active:scale-95 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300">ENVIAR MENSAGEM</button>
+        <div id="status"></div>
+        <hr class="border-slate-700 my-6">
+
+        <h3 class="text-slate-400 text-sm font-bold mb-3 uppercase tracking-widest text-left">Histórico</h3>
+            <div id="historico" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-left">
+            <p class="text-slate-500 text-xs italic">Nenhuma mensagem enviada ainda...</p>
+        </div>
+    </div>
+
+    </div>
+
+  <script>
+    function checkEnter(event) {
+        if (event.key === "Enter") enviarMensagem();
+    }
+
+    function sairDoPainel() {
+        // 1. Remove o "crachá" de acesso do navegador
+        localStorage.removeItem('bot_access');
+        
+        // 2. Redireciona para a tela de login na mesma hora
+        window.location.replace("/login.html");
+    }
+   
+    async function enviarMensagem() {
+        const input = document.getElementById('msgInput');
+        const btn = document.getElementById('btnEnviar');
+        const statusDiv = document.getElementById('status');
+        const msg = input.value.trim();
+
+        // 1. Validação simples
+        if (!msg) {
+            statusDiv.innerText = "⚠️ Digite uma mensagem!";
+            statusDiv.style.color = "#e67e22";
+            return;
+        }
+
+        // 2. Estado de carregamento
+        btn.disabled = true;
+        statusDiv.innerText = "⏳ Enviando...";
+        statusDiv.style.color = "#3498db";
+
+        try {
+            // 3. Chamada ao servidor
+            const resposta = await fetch(`/enviar?msg=${encodeURIComponent(msg)}`);
+            
+            if (resposta.ok) {
+                // 4. Se deu certo, atualiza o status
+                statusDiv.innerText = "✅ Mensagem enviada com sucesso!";
+                statusDiv.style.color = "#27ae60";
+
+                // 5. Lógica do Histórico (Adiciona o card de vidro)
+                const historicoDiv = document.getElementById('historico');
+                
+                // Remove o texto de "vazio" se existir
+                if (historicoDiv.innerHTML.includes('Nenhuma') || historicoDiv.innerHTML.includes('atividade')) {
+                    historicoDiv.innerHTML = '';
+                }
+
+                const novaMsg = document.createElement('div');
+                novaMsg.className = "bg-white/5 backdrop-blur-lg border border-white/10 p-4 rounded-2xl border-l-4 border-l-blue-500 transition-all hover:scale-[1.02] animate-pulse mb-3 text-left";
+
+                novaMsg.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Enviado</span>
+                        <span class="text-[10px] text-slate-500">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <p class="text-slate-100 text-sm leading-relaxed">${msg}</p>
+                `;
+
+                historicoDiv.prepend(novaMsg);
+
+                // 6. Limpa o input
+                input.value = "";
+            } else {
+                statusDiv.innerText = "❌ Erro ao processar o envio.";
+                statusDiv.style.color = "#e74c3c";
+            }
+        } catch (err) {
+            statusDiv.innerText = "❌ Erro de conexão com o servidor.";
+            statusDiv.style.color = "#e74c3c";
+        } finally {
+            // 7. Reabilita o botão independente de erro ou sucesso
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
